@@ -1,0 +1,256 @@
+---
+title: 'EEMB 146 Final Report: The effect of water conditions on the success of marine
+  research on the species Carcharodon carcharias  '
+author: "Bergen Foshay"
+date: "6/9/2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE) # you must have this set to TRUE
+
+```
+
+```{r data and libraries, include=FALSE}
+# upload necessary libraries
+library(readr)
+library(tidyverse)
+library(ggplot2)
+library(psych)
+library(car)
+library(multcomp)
+library(bookdown)
+library(knitr)
+
+
+# upload your dataset(s)
+sharks <- read.csv("EEMB146FinalProjectData(Sharks).csv")
+sub1 <- subset(sharks,trip.duration..minuets.Â.!="na")
+sub2 <- subset(sub1,No..Sharks!="na")
+sub3 <- subset(sub2,Water.vis..poor.moderate.good.!="na")
+sub6 <- subset(sub3,sea.state..calm..choppy..rough.!="na")
+sub4 <- subset(sub6, select = c(sea.state..calm..choppy..rough. , No..Sharks, Water.vis..poor.moderate.good.,trip.duration..minuets.Â.))
+sub4$sea.state..calm..choppy..rough. <- gsub("calm", "Calm", sub4$sea.state..calm..choppy..rough.)
+sub4$sea.state..calm..choppy..rough. <- gsub("choppy", "Choppy", sub4$sea.state..calm..choppy..rough.)
+sub4$Water.vis..poor.moderate.good. <- gsub("good", "Good", sub4$Water.vis..poor.moderate.good.)
+sub4$Water.vis..poor.moderate.good. <- gsub("poor", "Poor", sub4$Water.vis..poor.moderate.good.)
+sub4$trip.duration..minuets.Â. <- as.integer(sub4$trip.duration..minuets.Â.)
+sub4$Water.vis..poor.moderate.good. <- as.factor(sub4$Water.vis..poor.moderate.good.)   
+sub4$sea.state..calm..choppy..rough. <- as.factor(sub4$sea.state..calm..choppy..rough.) 
+
+str(sub4)
+```
+
+## Abstract
+This study examined factors that contribute to the length of a research trip that be conducted in ocean conditions. The data that was used in this project was collected from a 2.5 year study on Carcharodon carcharias that noted the sea state and water visibility that influences the number of sharks observed per trip. These factors were examined in this study to see if they influenced the duration of research trips. ANOVA and linear regression analysis were used. None of the analysis conducted resulted in results that were statistically significant. Therefore, no significant link between ocean conditions and length of trip were found. 
+
+
+## Introduction
+Habitat for the species Carcharodon carcharias is prevalent off of the coast of South Africa in False Bay. Referred to by their common name, the great white sharks, this species is known as an apex predator. They are often portrayed in media and popular culture as a threat to humans, but not only are great white sharks they are also an incredibly important species in marine ecosystems that have had declining populations in recent years due to habitat loss and overfishing. They are currently classified as a threatened species, and a high amount of research is being conducted to learn more about them and how to conserve their populations (Weng et al., 2007). One of the most well known areas great white sharks can be found in is off of the coast of South Africa. While they are suffering from declining populations, they still populate the area in numbers high enough in South Africa to warrant attention from ecologists. With a large feeding area (Seal Island) nearby, sharks aggregate in the area in autumn and winter (Martin et al., 2005). Marine researchers such as Dr. Allison Kock with the University of Cape Town are working to better understand the movement of great whites in the area. Having a better understanding of shark movements enables marine researchers to develop better conservation studies to protect the species. 
+One of the difficulties in studying marine animals is trying to conduct protocols such as tagging in tough ocean conditions. Having a better understanding of how water conditions affect how long researchers can be out on the water and their research outcomes could help lead to better research in the future (Kock et al., 2015). This report will aim to determine if certain ocean conditions lead to better conditions for research. The first condition is the sea state. The sea state, categorized as calm, choppy, or rough, describes the water conditions of the ocean. The second condition is water visibility, categorized as good, moderate, or poor. Both of these condition will both affect the ability of researchers to spot great white sharks in the water.The effect of these water conditions on research will be evaluated by comparing them to the number of sharks spotted by researcher during the trip and the time of how long researchers were able to stay in the water, or the trip duration. 
+The data in this study was collected by Dr. Allison Kock, Michael Meÿer, and Deon Kotze and published by Movement Ecology in a paper titled “Summer at the beach: spatio-temporal patterns of white shark occurrence along the inshore areas of False Bay, South Africa”. After subsetting the data so that it only consisted of the variables discussed later in this report, there were 214 observations and 4 variables. The 4 variables were the trip duration in minutes, number of observed sharks, sea state, and water visability. 
+
+
+Does the duration of the trip in minutes have a correlation with the water conditions including water visibility and sea state or the number of sharks observed per trip? Can eb predicted
+H0: The duration of the trip in minutes is not correlated with ater visability, sea state, number of sharks observed.
+Ha: The duration of the trip in minutes is correlated with at least one of the follwing: water visability, sea state, number of sharks observed. 
+
+
+## Exploratory Data Analysis
+
+
+
+```{r}
+#Distribution plot of y (numeric)
+sub4$trip.duration..minuets.Â. <- as.integer(sub4$trip.duration..minuets.Â.)
+sub4$logtripduration <- log(sub4$trip.duration..minuets.Â.)
+par(mfrow=c(2,2))
+qqPlot(sub4$logtripduration, main = "Figure 3")
+#The data is now normally distributed after the log transformation
+##Distribution plot of y ~ x(numeric)
+plot(sub4$logtripduration~sub4$No..Sharks, main = "Figure 4", xlab= "No. of observed sharks", ylab ="Log trip duration" )
+##graph for y ~ x (1st categorical: Sea State)
+boxplot(sub4$logtripduration~sub4$sea.state..calm..choppy..rough., main = "Figure 5",  xlab= "Sea State", ylab ="Log trip duration" )
+##graph for y ~ x (2nd categorical: Water visability)
+boxplot(sub4$logtripduration~sub4$Water.vis..poor.moderate.good.,  main = "Figure 6",  xlab= "Water visability", ylab ="Log trip duration" )
+par(mfrow=c(1,1))
+```
+
+Figure 3- This qqPlot shows the distribution of the variable log trip duration in minutes. It shows a normal distribution
+Figure 4- This scatterplot plots the variable log trip duration against number of observed sharks
+Figure 5- This boxplot shows the distribution of log trip duration against the three different sea states
+Figure 6- This boxplot shows the distribution of log trip duration against the three different water visabilities
+
+The distribution of the trip duration in minutes yielded a histogram that is right skewed (See Figure 1 in the appendix). A Shipiro Wilks Test confirmed that with a p-value of <0.05 (8.04e-05) the data was not normally distributed. After a log transformation, the distribution of log trip distribution is not particularly skewed in either direction according to the histogram. Instead, the distribution can be described as approximately symmetrical. It seems to follow a normal distribution. As identified by the boxplot, there is one outlier, the value 3.806662. In the scatter plot, there is one outlier where the trip duration where 15 sharks were spotted in one trip. In the boxplot that compares log trip duration to sea state, there are two outliers in the Calm group. In the boxplot that compares log trip duration to water visibility, there is the same outlier, coming from the value  3.806662 from the lot of trip distribution. 
+
+## Statistical Methods
+
+###Test 1- ANOVA
+Assumptions for the ANOVA
+
+1. Each variable can be assumed to be from a random sample because of the methodology from the study that this data set was taken from
+2. Trip duration (the response variable) is normally distributed as seen from the qqplot and the shapiro test results resulting from the log transformation. The qqPlot looks to be approximatley normally distributed because the data lies between the blue dashed lines on the plot. Normality is further proven from the results of the Shapiro Wilks test. With a p-value of 0.05603, which is above my alpha value of 0.05. Because of this result, we fail to reject the null hypothesis of the shapiro Wilks test that the data is normally distributed. Therefore, we can assue that the data is normally distributed. 
+3. The varience is the same in all k populations. I know this because the levenes test resulted in a p-value of 0.3208, which is above my alpha value of 0.05. Because of this result, we fail to reject the null hypothesis of the Levene's test that the data has equal variance. Therefore, we can assue that the data have equal variance.
+
+Hypoethesis:
+H0: The mean of trip duration is equal to the mean of sea state
+Ha:The mean of trip duration is not equal to the mean of sea state
+#Does trip duration vary by sea state?
+```{r}
+trip1 <- aov(logtripduration~sea.state..calm..choppy..rough., data=sub4)
+res=trip1$residuals
+par(mfrow=c(2,2))
+plot(trip1)
+par(mfrow=c(1,1))
+qqPlot(res) 
+```
+
+This test is appropriate for my data because all of the assumptions for the anova of log trip duration and sea state are met, whereas the anova that was run on water visibility did not have normally distributed residuals (appendix). This test establishes whether or not there is a relationship between log trip duration and sea state, which will be discussed further in the results section. 
+
+###Test 2- Linear Regression
+Assumptions for Multiple Regression
+1. Observations represent a random sample and are independant because of thee way the origional study was conducted- Log trip duration was proven to be normal by a shapiro-wilks test and Figure 3. 
+2. There is no collinearity between predictors, as shown by figure 7. None of the values are high enough correlations to indicate collinearity. 
+3. There is some linear relationship between predictors and the response
+4. residuals of the model are normal- The shapiro test for all three models have p-values above 0.05, so they can be considered normal
+5. residuals of the model have equal variance- This is true because the residuals vs. Fitted plots do not show an obvious pattern. This is shown in figure 10 in the appendix
+```{r}
+pairs.panels(sub4[-4], lm = TRUE, cor = T, main="Figure 7")
+```
+Fit_2var is the model that has the lowest AIC and BIC values so it is chosen as the best model. The results of a shaipro Wilks test run on the residuals of this model yield a p-value of 0.06592, which greater than an alpha level of 0.05. Therefore, we can conclude that this model fits the assumption that the residuals are normally distributed. 
+Because the r squared value is 0.1503, this can be interpreted as 15.03 percent of the variation in log trip duration can be explained by variation in sea state and number of sharks. So there is some correlation in between those variables. However, number of sharks is the only variable between the two explanitory variables that had a significant p-value, so it is the only variable that can be proven to have statistical significance. 
+
+
+## Results
+
+In Test 1, the mean of trip duration was not found to be equal to the mean of sea state
+In Test 2, the linear model that was determined to have the best fit was not found to have statistical significance. There was no significant relationship between log trip duration, sea stae, and number of sharks observed. 
+
+#### Does log trip variation vary by sea state?
+I did not find a significant difference across sea state's mean lof trip duration  (one-way ANOVA; F-value =  0.39, p-value < 0.05). This si visualized in Figure 
+
+### Is log trip duration correlated with sea state and No.Sharks
+Log trip duration is not correlated with sea state, since the p-value is more than 0.05. Log trip duration is correlated with Number of sharks, since the p-value for that comparison is less than 0.05. 
+
+
+#Discussion 
+##What the result from Test 1 means in terms of my question
+We lack sufficient evidence to reject the null hypothesis that the mean of log trip duration is equal to the mean of sea state. Therefore, we cannot conclude that a sea state is more predictive on how long the trip will be. No association can be proven between the log trip duration in minutes and how rough the water is . We cannot state that having smoother or choppier water conditions affects how long researchers are able to stay out on the water. 
+
+##What the result from Test 2 means in terms of my question
+Test two shows that there can be cautious correlation made between the log duration of the trip in minutes and the number of sharks spotted based off of the p-value in the chosen model. 
+
+##What the result from Test 1 and Test 2 means about the biology of my system
+These results mean that few conclusions can be drawn regarding how water conditions affect the length of research trips. I was able to see a correlation between the number of sharks spotted and the log length of the trip. In the next paragraph I will explain why the limitations of the study make me hesitant to draw a conclusion from that analysis. 
+
+##The potential limitations of your system
+A potential limitation of this system is that trip duration cannot always be assumed to be a direct result of water conditions. There are many other factors that affect the length of a research trip such as the schedules of the researchers or the accessibility of equipment that may have affected the length of time they were out on the water as well. This may have contributed to why the results from this study were not statistically significant. 
+
+##How I would improve this study
+To improve this study, it would be helpful to have researchers report the other factors that contributed to the length of their research trips. In order to come to a broader and more useful conclusion about how water conditions affect research, it would be beneficial to expand this study to more than just one research team. 
+
+
+## References
+H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.
+
+Hadley Wickham and Jim Hester (2020). readr: Read Rectangular Text Data. R package version 1.4.0. https://CRAN.R-project.org/package=readr
+
+John Fox and Sanford Weisberg (2019). An {R} Companion to Applied Regression, Third Edition. Thousand Oaks CA: Sage. URL:
+https://socialsciences.mcmaster.ca/jfox/Books/Companion/
+
+Kock, A. A., Photopoulou, T., Durbach, I., Mauff, K., Meyumler, M., Kotze, D., Griffiths, C. L., & Orsquo, M. J. (2018, May 22). Summer at the beach: spatio-temporal patterns of white shark occurrence along the inshore areas of False Bay, South Africa. Movement Ecology. https://movementecologyjournal.biomedcentral.com/articles/10.1186/s40462-018-0125-5.
+
+Martin, R. A., Hammerschlag, N., Collier, R. S., & Fallows, C. (2005, October 6). predatory behaviour of white sharks (carcharodon carcharias) at seal island, south africa: Journal of the Marine Biological Association of the United Kingdom. Cambridge Core. https://www.cambridge.org/core/journals/journal-of-the-marine-biological-association-of-the-united-kingdom/article/predatory-behaviour-of-white-sharks-carcharodon-carcharias-at-seal-island-south-africa/0B567A5205A431DC464BAF1686065371. 
+
+Revelle, W. (2020) psych: Procedures for Personality and Psychological Research, Northwestern University, Evanston, Illinois, USA,
+  https://CRAN.R-project.org/package=psych Version = 2.1.3,.
+  
+Torsten Hothorn, Frank Bretz and Peter Westfall (2008). Simultaneous Inference in General Parametric Models. Biometrical Journal 50(3), 346--363.
+
+Weng, K. C., Boustany, A. M., Pyle, P., Anderson, S. D., Brown, A., & Block, B. A. (2007, July 17). Migration and habitat of white sharks (Carcharodon carcharias) in the eastern Pacific Ocean. Marine Biology. https://link.springer.com/article/10.1007/s00227-007-0739-4. 
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+Yihui Xie (2021). knitr: A General-Purpose Package for Dynamic Report Generation in R. R package version 1.31.
+
+Yihui Xie (2021). bookdown: Authoring Books and Technical Documents with R Markdown. R package version 0.22.
+
+
+
+## Appendix
+```{r}
+#Histogram of Y numeric
+hist(sub4$trip.duration..minuets.Â., main= "Figure 1", xlab = "Trip duration in minutes")
+hist(sub4$logtripduration, main= "Figure 2", xlab = "Log Trip duration in minutes")
+
+#Analysis of why the Water Visibility was not chosen for anova, it does not pass the shapiro wilks test
+
+Vis1 <- aov(logtripduration ~ Water.vis..poor.moderate.good., data=sub4)
+par(mfrow=c(2,2))
+plot(Vis1)
+par(mfrow=c(1,1))
+res=Vis1$residuals
+hist(res)
+qqPlot(res) 
+shapiro.test(res)
+leveneTest(logtripduration ~ Water.vis..poor.moderate.good., data=sub4)
+
+#Proving normality of the data for anova
+#Proving normality for the assumptions
+shapiro.test(sub4$logtripduration)
+leveneTest(sub4$logtripduration ~ sub4$sea.state..calm..choppy..rough.)
+
+#Running the anova
+trip1 <- aov(logtripduration~sea.state..calm..choppy..rough., data=sub4)
+res=trip1$residuals
+shapiro.test(res)
+leveneTest(logtripduration ~ sea.state..calm..choppy..rough., data=sub4)
+leveneTest(logtripduration ~ Water.vis..poor.moderate.good., data=sub4)
+summary(trip1)
+
+##Test 2
+
+#Choosing the linear models
+fit_1var <- lm(logtripduration ~ sea.state..calm..choppy..rough., 
+               data = sub4)
+fit_2var <- lm(logtripduration ~ sea.state..calm..choppy..rough. + No..Sharks, 
+               data = sub4) 
+fit_3var <- lm(logtripduration ~ sea.state..calm..choppy..rough. + No..Sharks + Water.vis..poor.moderate.good., 
+               data = sub4) 
+result <- AIC(fit_1var,fit_2var,fit_3var)
+models <- list(fit_1var,fit_2var,fit_3var)
+result$BIC <- sapply(models, BIC)
+model_summary <- lapply(models, summary)
+for(i in 1:length(models)){ #this creates a variable i that starts with the value i=1
+result$rsq[i] <- model_summary[[i]]$r.squared #we assign the rsq value from model i to the i'th row of the column 'rsq' in the table 'results'
+result$adj_rsq[i] <- model_summary[[i]]$adj.r.squared}
+kable(result, digits = 2, align = "c")
+#Showing the results of fit_var2
+res1=fit_2var$residuals
+
+#Shairo tests for the normality of residuals for test 2
+res3=fit_3var$residuals
+shapiro.test(res3)
+res2=fit_1var$residuals
+shapiro.test(res2)
+res1=fit_2var$residuals
+qqPlot(res1, main= "Figure 9- qqplot for residuals of fit_2var") 
+par(mfrow=c(2,2))
+plot(fit_2var, main="Figure 10") 
+```
+
+
+
+
+
+
+
+
+
+
