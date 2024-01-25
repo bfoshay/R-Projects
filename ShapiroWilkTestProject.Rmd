@@ -1,0 +1,146 @@
+---
+title: "Lab Assignment 8"
+author: "Bergen Foshay"
+date: "5/23/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(nlme)
+library(psych)
+library(knitr)
+library(ggplot2)
+```
+
+## Question 1
+Provide some background: What is ozone? Why might some of these variables affect its levels? Where does this data come from? 3-4 sentences is fine. You are required to cite at least one source when writing this response.
+
+Ozone is a gas that can cause damage to human health. It is highly reactive and can be found in both man-made and natural forms in the Earth's stratosphere. Wind may affect ozone levels because Ozone levels have been found to lower with higher winds because wind helps it to dissipate. Temperature affects ozone levels since higher temperatures have been found to lead to an increase in ozone levels (Jammalamadaka, 2006). There are variations in the ozone levels depending on the time of year, with ozone lower in the summer, so month and day are related (Burrows, 2019). Ozone concentration data is kept track of by organizations such as NASA, the NOAA, and the EPA. To measure it, a sample of air is drawn through a tube and it is analyzed.
+
+
+Citations
+Burrows, L. (2019, March 15). The complex relationship between heat and ozone. Harvard Gazette. https://news.harvard.edu/gazette/story/2016/04/the-complex-relationship-between-heat-and-ozone/. 
+
+Jammalamadaka, S. (2006, September). The effect of wind direction on ozone levels: A case study. Environmental and Ecological Statistics . https://www.researchgate.net/publication/225549032_The_effect_of_wind_direction_on_ozone_levels_A_case_study. 
+
+##Question 2
+Read in the air quality data and visualize it. What are your potential predictors? What are some potential random factors? Do you think any of these predictors might interact with each other? Remove any missing data to ‘clean up’ the dataset.
+
+The potential predictors are solar r., wind, temperature, and day
+The potential random factor is month
+The pairs panel in Question 3 does not have any values over 0.6 between predictor variables, show there is not an interaction indicated. 
+```{r}
+#adding in the data
+airqual <- airquality
+#Cleaning the data, omitting NA cells
+airqual <- na.omit(airqual)
+airqual$Month <- as.factor(airqual$Month)
+#visualizing the data
+boxplot(airquality)
+```
+
+
+##Question 3: 
+Check your data for collinearity, and check whether predictors have a linear relationship with the response variable. Transform any data that violates assumptions (remember, not all predictors need to be normal as long as the model residuals are normal). Check for any major outliers. Describe what you find.
+
+```{r}
+#Creating the paris panel
+pairs.panels(airqual, lm = TRUE, cor = T)
+```
+The pairs panel does not have any values over 0.6 between predictor variables, so there is no coliniarity. 
+
+```{r}
+#Testing the normality of all of the predictor variables with ozone and checking thre residuals with a Shapiro-Wilks test. 
+fitvar <- lm(Ozone ~ Solar.R, data = airqual)
+res=fitvar$residuals
+shapiro.test(res)
+#Log-transforming data for ozone
+airqual$logozone <- log(airqual$Ozone+1)
+fit_1var <- lm(logozone ~ Solar.R, data = airqual)
+res1=fit_1var$residuals
+shapiro.test(res1)
+#CLT applies since the sample size is over 50 so we will continue with the log transformed ozone data since it is the best fit over the normal data
+fitvar2 <- lm(logozone ~ Wind, data = airqual)
+res2=fitvar2$residuals
+shapiro.test(res2)
+#Excluding the wind variable because it does not fit the assumptions for a predictor variable because its residuals are not normal even after trasnformation. 
+airqual_sub <- subset(airqual, select = -Wind)
+#Testing for normality of residuals for temperature
+fitvar3 <- lm(logozone ~ Temp, data = airqual)
+res3=fitvar3$residuals
+shapiro.test(res3)
+#Month testing
+fitvar4 <- lm(logozone ~ Month, data = airqual)
+res4=fitvar4$residuals
+shapiro.test(res4)
+#Dat testing
+fitvar5 <- lm(logozone ~ Day, data = airqual)
+res5=fitvar5$residuals
+shapiro.test(res5)
+```
+
+There are some outliers for the ozone variable, as seen in the boxplot from question 1. There also seems to be one outlier for wind, though it was excluded from this dataset
+
+
+
+
+##Question 4: 
+Fit a model with one predictor. Check its residuals for normality.
+
+```{r}
+fitvar1 <- lm(logozone ~ Solar.R, data = airqual_sub)
+res_1=fitvar1$residuals
+shapiro.test(res_1) 
+```
+With a p-value of 0.1285, over 0.05 for an alpha value, the residuals are normal
+
+##Question 5: 
+Fit at least two other models with different combinations of predictors. State whether you are including random effects or interaction terms.
+
+```{r}
+fit_1var <- lm(logozone ~ Solar.R, data = airqual)
+fit_2var <- lm(logozone ~ Solar.R + Temp, data = airqual_sub)
+fit_full <- lm(logozone ~ Solar.R + Temp + Month + Day, data = airqual_sub)
+#resfull=fit_full$residuals
+#par(mfrow = c(2,2))
+#plot(fit_full)
+```
+I am using the random effect of month.
+
+##Question 6:
+
+Create a table of results to compare your models using AIC, BIC, and adjusted R-squared. Include the degrees of freedom of each model in the table so that you can consider parsimony in your final decision.
+
+```{r}
+#Creating AIC and BIC Table
+result <- AIC(fit_1var,fit_2var,fit_full)
+models <- list(fit_1var,fit_2var,fit_full)
+result$BIC <- sapply(models, BIC)
+model_summary <- lapply(models, summary)
+for(i in 1:length(models)){ #this creates a variable i that starts with the value i=1
+  result$rsq[i] <- model_summary[[i]]$r.squared #we assign the rsq value from model i to the i'th row of the column 'rsq' in the table 'results'
+  result$adj_rsq[i] <- model_summary[[i]]$adj.r.squared #same for adjusted rsq
+} #now we go back to the beginning of the for-loop, add 1 to the value of i, and do everything again
+kable(result, digits = 2, align = "c")
+```
+#Question 7
+Choose the best model and explain why this was your choice. Check its residuals for normality. How well does this model fit the data? How well does it predict ozone levels?
+
+```{r}
+#Testing the normallity of the residuals for the chosen model. 
+resfinal=fit_2var$residuals
+shapiro.test(resfinal)
+#Creating the plot for model predictions
+splitter <- sample(1:nrow(airqual_sub), 15, replace = F)
+psub_train <- airqual_sub[-splitter,]
+psub_test <- airqual_sub[splitter,]
+fit_4var_split <- lm(logozone ~ Solar.R + Temp, data = psub_train)
+prediction <- predict(fit_4var_split,psub_test)
+plot(psub_test$logozone, pch=1) #plot the actual test data values
+points(prediction, pch=20, col = "red") #plot the model predictions for those points
+```
+fit_2var is the best model. With the Shapiro-Wilks resulting i a p-value of ~ 0.79, well over the alpha level of 0.05, the residuals for fit_2var can be considered normal. With an R-squared value of 0.62, this model fits the data relatively well, since this value means that 62% of the variation in log of ozone levels can be explained by the variation in Solar.r and temp. As far as predicting ozone levels, this model does a good job since the 2 data sets shown in the plot above show overlap and the values are close together (as a comparison between the outlined points and the red points)
