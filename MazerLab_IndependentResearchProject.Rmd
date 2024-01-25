@@ -1,0 +1,118 @@
+---
+title: "seedweighing"
+author: "Bergen Foshay"
+date: "2022-08-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Load packages
+```{r}
+install.packages("lme4")
+install.packages("broom")
+library(data.table) # Efficient, succinct tools to wrangle data
+library(visreg) # Tools to graph output of linear models
+library(ggplot2)
+library(car)
+library(tidyverse)
+library(cowplot)
+library(broom)
+library(lme4)
+```
+
+#Load data
+```{r}
+ACdata<- read.csv("ACseedweight.csv")
+View(ACdata)
+
+HRdata<- read.csv("HRseedweight.csv")
+View(HRdata)
+class(ACdata$MatID)
+ACdata$MatID <-as.character(ACdata$MatID)
+class(ACdata$MatID)
+```
+
+```{r}
+modAC <- lm(meanseedweight ~ seedDOY, data=ACdata)
+summary(modAC)
+
+
+modHR <- lm(meanseedweight ~ seedDOY, data=HRdata)
+summary(modHR)
+#make doy a factor, do anova, vif(not needed for categorical), and emmeans, frequency distribution of seed size, see if it needs log transformation. 
+
+##Quadratic Regression
+#AC
+ACseedDOYSQ <- ACdata$seedDOY*ACdata$seedDOY
+ACdata <- cbind(ACdata, ACseedDOYSQ)
+ACquadraticModel <- lm(meanseedweight ~ seedDOY + I(seedDOY^2), data=ACdata)
+summary(ACquadraticModel)
+
+#HR
+HRseedDOYSQ <- HRdata$seedDOY*HRdata$seedDOY
+HRdata <- cbind(HRdata, HRseedDOYSQ)
+HRquadraticModel <- lm(meanseedweight ~ seedDOY + I(seedDOY^2), data=HRdata)
+summary(HRquadraticModel)
+
+
+ggplot(ACdata, aes(x=seedDOY, y=meanseedweight)) + geom_point()+stat_smooth(se=F) +abline(x=seedDOY, y=meanseedweight, data = ACdata)
+ggplot(HRdata, aes(x=seedDOY, y=meanseedweight)) + geom_point()+stat_smooth(se=F)
+#visualization
+ggplot(ACdata, aes(x=seedDOY, y=meanseedweight)) + geom_point()  + theme_classic() + xlab("Seed Collection Date (DOY)") + ylab("Mean Seed Weight (mg)")
+
+ggplot(HRdata, aes(x=seedDOY, y=meanseedweight)) + geom_point()  + theme_classic() + xlab("Seed Collection Date (DOY)") + ylab("Mean Seed Weight (mg)")
+```
+
+Regression plot
+```{r}
+ggplot(ACmod, aes(x = .fitted, y = .resid)) + geom_point()+
+  theme_cowplot(12)
+
+resAC <- resid(modAC)
+plot(fitted(modAC), resAC)
+abline(0,0)
+qqnorm(resAC)
+
+resHR <- resid(modHR)
+plot(fitted(modHR), resHR)
+abline(0,0)
+
+```
+
+#Mixed linear model
+```{r}
+#AC
+ac1 <- lmer(Seedweight ~ seedDOY *(1|MatID) , ACdata)
+summary(ac1)
+
+ac3 <- lmer(seedDOY ~ (Seedweight | MatID), ACdata)
+summary(ac3)
+
+ac2 <- lmer(seedDOY ~ Seedweight + (Seedweight | Block), ACdata)
+summary(ac2)
+
+#HR
+
+hr1 <- lm(Seedweight ~ seedDOY * MatID, HRdata)
+summary(hr1)
+
+hr2 <- lmer(seedDOY ~ Seedweight + (Seedweight | Block), HRdata)
+summary(hr2)
+```
+
+
+##Quadratic Regression
+#AC
+```{r}
+ACseedDOYSQ <- ACdata$seedDOY*ACdata$seedDOY
+ACdata <- cbind(ACdata, ACseedDOYSQ)
+ACquadraticModel <- lm(meanseedweight ~ seedDOY + I(seedDOY^2), data=ACdata)
+summary(ACquadraticModel)
+#HR
+HRseedDOYSQ <- HRdata$seedDOY*HRdata$seedDOY
+HRdata <- cbind(HRdata, HRseedDOYSQ)
+HRquadraticModel <- lm(meanseedweight ~ seedDOY + I(seedDOY^2), data=HRdata)
+summary(HRquadraticModel)
+```
