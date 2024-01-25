@@ -1,0 +1,290 @@
+---
+title: "TreeCoreProject"
+author: Bergen Foshay
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Adding packages*
+
+```{r}
+library(data.table) # Efficient, succinct tools to wrangle data
+library(visreg) # Tools to graph output of linear models
+library(ggplot2)
+library(car)
+library(tidyverse)
+library(cowplot)
+```
+
+*Loading in the data*
+
+```{r}
+COdata <- read.csv(file = "CO_ABLAmasters_092216.csv",header = TRUE,fill = TRUE)
+MTdata <- read.csv(file = "MT_ABLAmasters_092216.csv",header = TRUE,fill = TRUE)
+WAdata <- read.csv(file = "WA_ABLAmasters_092216.csv",header = TRUE,fill = TRUE)
+Normals.all <- read.csv(file ="Climatenormals.csv",header = TRUE,fill = TRUE)
+Normals <- Normals.all[which(Normals.all$Species=="ABLA"),]
+Normals$StateBand <- paste(Normals$State, Normals$Band, sep="-")
+```
+
+*Data Cleaning*
+
+```{r}
+
+keepsco <- COdata %>% 
+  select(1:7, 14:16, Tmax_sm, Tmin_wt,PDSI_mean_an, PDSI_min_an, SP12_mean_an, SP12_min_an, PAS_at, PAS_wt, PAS_sp,PAS_an, PPT_wt, PPT_sp, PPT_sm, PPT_at, PPT_an, DD5_an, DD5_sp, DD5_sm, Tmin_sm
+ )
+keepsco$Mountain <- "CO"
+keepsco$Elev <- factor(keepsco$Elev)
+
+keepsmt <- MTdata %>% 
+  select(1:7, 14:16, Tmax_sm, Tmin_wt,PDSI_mean_an, PDSI_min_an, SP12_mean_an, SP12_min_an, PAS_at, PAS_wt, PAS_sp,PAS_an, PPT_wt, PPT_sp, PPT_sm, PPT_at, PPT_an, DD5_an, DD5_sp, DD5_sm, Tmin_sm
+ )
+keepsmt$Mountain <- "MT"
+keepsmt$Elev <- factor(keepsco$Elev)
+
+keepswa <- WAdata %>% 
+  select(1:7, 14:16, Tmax_sm, Tmin_wt,PDSI_mean_an, PDSI_min_an, SP12_mean_an, SP12_min_an, PAS_at, PAS_wt, PAS_sp,PAS_an, PPT_wt, PPT_sp, PPT_sm, PPT_at, PPT_an, DD5_an, DD5_sp, DD5_sm, Tmin_sm
+ )
+keepswa$Mountain <- "WA"
+keepswa$Elev <- factor(keepswa$Elev)
+
+```
+
+```{r combine data}
+alldata <- rbind(keepsco, keepsmt, keepswa)
+```
+
+*Linear Models*
+
+```{r}
+#Testing temp at high elevations
+##High temp
+summary(lm(RWIpw ~ Tmax_sm * Elev, WAdata))
+summary(lm(RWIpw ~ Tmax_sm * Elev, COdata))
+summary(lm(RWIpw ~ Tmax_sm * Elev, MTdata))
+
+#########################################################################################################################################################
+##Low temp
+summary(lm(RWIpw ~ Tmin_sm * Elev, WAdata))
+summary(lm(RWIpw ~ Tmin_sm * Elev, COdata))
+summary(lm(RWIpw ~ Tmin_sm * Elev, MTdata))
+#########################################################################################################################################################
+#Testing PAS in WA
+#summary(lm(RWIpw ~ PAS_wt * Elev, WAdata))
+
+#Summer PTT in wa
+#summary(lm(RWIpw ~ PPT_sm * Elev, WAdata))
+
+```
+
+
+
+
+###Figure 2 Code###
+```{r}
+summary(lm(RWIpw ~ Tmin_wt * Elev, keepsmt))
+
+keepsmtnew <- MTdata %>% 
+  select(1:7, 14:16, Tmax_sm, Tmin_wt,PDSI_mean_an, PDSI_min_an, SP12_mean_an, SP12_min_an, PAS_at, PAS_wt, PAS_sp,PAS_an, PPT_wt, PPT_sp, PPT_sm, PPT_at, PPT_an, DD5_an, DD5_sp, DD5_sm
+ )
+keepsmtnew$Mountain <- "MT"
+keepsmtnew$Elev <- factor(keepsco$Elev)
+
+keepsmtnew %>% slice(112:222)
+Keepsmtplot <- keepsmtnew[-c(1:111, 223:333), ]
+
+FirstMod <- lm(RWIpw ~ Tmin_wt, Keepsmtplot)
+
+par(mar=c(5,5,1,1))
+plot(RWIpw ~ Tmin_wt, data = Keepsmtplot, xlab = "Minimum Winter Tempurature (°C)", ylab = "Ring Growth Index",   cex.lab=2, #change font size of axis labels
+     cex.main=1.5)
+abline(FirstMod, col="red")
+```
+
+
+
+``` {r test plotting}
+
+#plot(RWIpw ~ PAS_an, keepswa, col=factor(Elev))
+#plot(RWIpw ~ PAS_sp, keepswa, col=factor(Elev))
+
+#ggplot(keepswa, aes(x=PDSI_mean_an, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm")
+#ggplot(keepswa, aes(x=PDSI_mean_an, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm")
+
+#ggplot(keepswa, aes(x=Tmax_sm, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm")
+#summary(lm(RWIpw ~ Tmin_sm * Elev, keepswa))
+
+#summary(lm(RWIpw ~ PAS_an * Elev, WAdata))
+
+#summary(lm(RWIpw ~ Year * Elev, MTdata))
+```
+
+
+
+
+###Figure 3 Plotting###
+```{r}
+#plot(RWIpw ~ SP12_min_an, keepsco, col=factor(Elev))
+#plot(RWIpw ~ SP12_min_an, keepsmt, col=factor(Elev))
+#plot(RWIpw ~ SP12_min_an, keepswa, col=factor(Elev))
+
+#ggplot(COdata, aes(x=Tmin_sm, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm")
+#ggplot(MTdata, aes(x=Tmin_sm, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm")
+#ggplot(WAdata, aes(x=Tmin_sm, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm")
+
+# doing 3 panel figure wih all moutains for temp
+
+#########################################################################################################################################################
+ggplot(alldata, aes(x=Tmin_sm, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm") + facet_wrap(facets=~Mountain) + theme_classic() + theme(text=element_text(size=20)) +
+  xlab("Minimum Summer Temperature (°C)") + ylab("Ring Growth Index") 
+#########################################################################################################################################################
+
+#PPT
+#ggplot(alldata, aes(x=PPT_an, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm") + facet_wrap(facets=~Mountain) + theme_classic()
+
+#DD5
+#ggplot(alldata, aes(x=DD5_an, y=RWIpw, col=Elev)) + geom_point() + geom_smooth(method="lm") + facet_wrap(facets=~Mountain) + theme_classic()
+
+#summary(lm(RWIpw ~ Tmin_wt * Elev, keepsco))
+#summary(lm(RWIpw ~ Tmin_wt * Elev, keepsmt))
+#summary(lm(RWIpw ~ Tmin_wt * Elev, keepswa))
+```
+
+###Figure 4 Plotting#####
+``` {r pulling out slope parameters}
+
+
+### Step 1: Make a data frame to store results in
+# make an empty dataframe to store all of our slope information in
+synth <- data.frame(Mountain=rep(c("CO","MT","WA"), each=3), "Elev"=rep(c("H","M","L"), times=3), Tmin.slope = rep(NA, 9),PDSI.slope=rep(NA,9), PAS.slope=rep(NA,9))
+synth$SateBand <- paste(synth$Mountain, synth$Elev, sep="-") #make a single identifier column
+
+
+# add in the climate data for each elevation band, drawn from the 'Normals' climate normals dataframe
+synth$Tmax <- Normals$Tmax_sm[match(Normals$StateBand, synth$SateBand)] # Tmax_sm
+synth$Tmax <- Normals$Tmax_sm[match(Normals$StateBand, synth$SateBand)] # Tmax_sm
+synth$Tmax <- Normals$Tmax_sm[match(Normals$StateBand, synth$SateBand)] # Tmax_sm
+synth$Tmax <- Normals$Tmax_sm[match(Normals$StateBand, synth$SateBand)] # Tmax_sm
+synth$Tmax <- Normals$Tmax_sm[match(Normals$StateBand, synth$SateBand)] # Tmax_sm
+
+
+
+# Step 2: Fit linear models and extract their slopes
+
+#### fit a linear regression model to each elevation for each mountain, so that the slope paramter is the actual slope (and not slope deviation from 'reference' elevation)
+
+
+#### Tmin models for each elevation on each mountain ###########################3
+
+modCOH <- lm(RWIpw ~ Tmin_wt, data=keepsco[keepsco$Elev=="H",])
+modCOM <- lm(RWIpw ~ Tmin_wt, data=keepsco[keepsco$Elev=="M",])
+modCOL <- lm(RWIpw ~ Tmin_wt, data=keepsco[keepsco$Elev=="L",])
+
+modMTH <- lm(RWIpw ~ Tmin_wt, data=keepsmt[keepsmt$Elev=="H",])
+modMTM <- lm(RWIpw ~ Tmin_wt, data=keepsmt[keepsmt$Elev=="M",])
+modMTL <- lm(RWIpw ~ Tmin_wt, data=keepsmt[keepsmt$Elev=="L",])
+
+modWAH <- lm(RWIpw ~ Tmin_wt, data=keepswa[keepswa$Elev=="H",])
+modWAM <- lm(RWIpw ~ Tmin_wt, data=keepswa[keepswa$Elev=="M",])
+modWAL <- lm(RWIpw ~ Tmin_wt, data=keepswa[keepswa$Elev=="L",])
+
+
+# extract the slope # from the fitted models above, and store them in the appropriate columns and rows of our empty dataframe created above
+
+#### Tmin slope parameters into empty dataframe
+synth$Tmin.slope[which(synth$Mountain=="CO" & synth$Elev=="H")] <- modCOH$coefficients[2] # this is our slope parameter for CO elevation H
+synth$Tmin.slope[which(synth$Mountain=="CO" & synth$Elev=="M")] <- modCOM$coefficients[2] # this is our slope parameter for CO elevation M
+synth$Tmin.slope[which(synth$Mountain=="CO" & synth$Elev=="L")] <- modCOL$coefficients[2] # this is our slope parameter
+
+synth$Tmin.slope[which(synth$Mountain=="MT" & synth$Elev=="H")] <- modMTH$coefficients[2] # this is our slope parameter
+synth$Tmin.slope[which(synth$Mountain=="MT" & synth$Elev=="M")] <- modMTM$coefficients[2] # this is our slope parameter
+synth$Tmin.slope[which(synth$Mountain=="MT" & synth$Elev=="L")] <- modMTL$coefficients[2] # this is our slope parameter
+
+synth$Tmin.slope[which(synth$Mountain=="WA" & synth$Elev=="H")] <- modWAH$coefficients[2] # this is our slope parameter
+synth$Tmin.slope[which(synth$Mountain=="WA" & synth$Elev=="M")] <- modWAM$coefficients[2] # this is our slope parameter
+synth$Tmin.slope[which(synth$Mountain=="WA" & synth$Elev=="L")] <- modWAL$coefficients[2] # this is our slope parameter
+
+
+
+
+#### PDSI models for each elevation on each mountain ###########################3
+
+#modCOH <- lm(RWIpw ~ PDSI_min_an, data=keepsco[keepsco$Elev=="H",])
+#modCOM <- lm(RWIpw ~ PDSI_min_an, data=keepsco[keepsco$Elev=="M",])
+#modCOL <- lm(RWIpw ~ PDSI_min_an, data=keepsco[keepsco$Elev=="L",])
+
+#modMTH <- lm(RWIpw ~ PDSI_min_an, data=keepsmt[keepsmt$Elev=="H",])
+#modMTM <- lm(RWIpw ~ PDSI_min_an, data=keepsmt[keepsmt$Elev=="M",])
+#modMTL <- lm(RWIpw ~ PDSI_min_an, data=keepsmt[keepsmt$Elev=="L",])
+
+#modWAH <- lm(RWIpw ~ PDSI_min_an, data=keepswa[keepswa$Elev=="H",])
+#modWAM <- lm(RWIpw ~ PDSI_min_an, data=keepswa[keepswa$Elev=="M",])
+#modWAL <- lm(RWIpw ~ PDSI_min_an, data=keepswa[keepswa$Elev=="L",])
+
+
+# extract the slope # from the fitted models above, and store them in the appropriate columns and rows of our empty dataframe created above
+
+#### PDSI slope parameters into empty dataframe
+#synth$PDSI.slope[which(synth$Mountain=="CO" & synth$Elev=="H")] <- modCOH$coefficients[2] # this is our slope parameter for CO elevation H
+#synth$PDSI.slope[which(synth$Mountain=="CO" & synth$Elev=="M")] <- modCOM$coefficients[2] # this is our slope parameter for CO elevation M
+#synth$PDSI.slope[which(synth$Mountain=="CO" & synth$Elev=="L")] <- modCOL$coefficients[2] # this is our slope parameter
+
+#synth$PDSI.slope[which(synth$Mountain=="MT" & synth$Elev=="H")] <- modMTH$coefficients[2] # this is our slope parameter
+#synth$PDSI.slope[which(synth$Mountain=="MT" & synth$Elev=="M")] <- modMTM$coefficients[2] # this is our slope parameter
+#synth$PDSI.slope[which(synth$Mountain=="MT" & synth$Elev=="L")] <- modMTL$coefficients[2] # this is our slope parameter
+
+#synth$PDSI.slope[which(synth$Mountain=="WA" & synth$Elev=="H")] <- modWAH$coefficients[2] # this is our slope parameter
+#synth$PDSI.slope[which(synth$Mountain=="WA" & synth$Elev=="M")] <- modWAM$coefficients[2] # this is our slope parameter
+#synth$PDSI.slope[which(synth$Mountain=="WA" & synth$Elev=="L")] <- modWAL$coefficients[2] # this is our slope parameter
+
+
+
+modMTH <- lm(RWIpw ~ Tmin_wt, keepsmt)
+modWAH <- lm(RWIpw ~ Tmin_wt, keepswa)
+modCOH$coefficients[1] # this is our slope parameter
+
+#par(mfrow=c(1,3))
+#visreg(modCOH, ylab="Tmin_wt")
+#visreg(modMTH, ylab="Tmin_wt")
+#visreg(modWAH, ylab="Tmin_wt")
+```
+
+
+```{r}
+#Figure 4
+par(mar=c(5,5,1,1))
+plot(Tmin.slope~Tmax, synth, pch = 15, col=factor(Mountain),
+     
+  
+        xlab="Maximum Annual Temperature (°C)",
+        ylab="Sensitivity to Minimum Annual Temperature", 
+     cex.lab=2, #change font size of axis labels
+     cex.main=2, 
+     cex = 1.5
+     )
+legend("topright",
+       legend = c("Colorado", "Montana", "Washington"),
+       fill = 1:3,       # Color of the squares
+       border = "black")
+
+#plot(PDSI.slope~Tmax, synth, col=factor(Mountain))
+
+plot(Tmin.slope~Tmin_wt, synth, pch = 15, col=factor(Mountain),
+     cex.lab=2, #change font size of axis labels
+     cex.main=2, 
+     cex = 2
+     )
+legend("topright",
+       legend = c("Colorado", "Montana", "Washington"),
+       fill = 1:3,       # Color of the squares
+       border = "black")
+```
+
+
+
